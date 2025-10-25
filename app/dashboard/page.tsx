@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Wallet } from "@coinbase/onchainkit/wallet";
 import { useSearchParams } from "next/navigation";
 import { baseSepolia } from "wagmi/chains";
@@ -143,7 +143,7 @@ function parseDateTimeToSeconds(value: string, label: string): bigint {
   return BigInt(Math.floor(asDate.getTime() / 1000));
 }
 
-export default function Dashboard() {
+function DashboardContent() {
   const contractAddress = useMemo(getContractAddress, []);
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -1873,5 +1873,13 @@ export default function Dashboard() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className={styles.loadingFallback}>Loading dashboard...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
