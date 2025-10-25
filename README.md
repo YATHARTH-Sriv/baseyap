@@ -62,6 +62,7 @@ public/               # Static assets
 - Transactions are dispatched through wagmi’s `useWriteContract`; receipts are tracked with `useWaitForTransactionReceipt`.
 
 ## 🔊 WebRTC Signaling Path
+- WebRTC Signaling Server (Node.js + Socket.io): https://github.com/YATHARTH-Sriv/webrtcserver ( Was Learning WebRTC before base batches because i wanted to build this idea that is why it is before the timeline of buildathon)
 1. The dashboard derives a `liveRoomId` combining creator address and room ID.
 2. `LiveAudioComponent` hands this session info to `useWebRTC`.
 3. `useWebRTC` connects to the signaling server `NEXT_PUBLIC_SIGNALING_URL` (defaults to `http://localhost:3001`).
