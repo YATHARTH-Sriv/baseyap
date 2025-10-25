@@ -217,6 +217,21 @@
   scroll-margin-top: 110px;
 }
 
+.sectionHidden {
+  display: none;
+}
+
+.stageWrapper {
+  display: grid;
+  gap: 1rem;
+}
+
+.stageNotice {
+  margin: 0;
+  color: rgba(148, 163, 184, 0.85);
+  font-size: 0.9rem;
+}
+
 .sectionHeader {
   display: grid;
   gap: 0.75rem;

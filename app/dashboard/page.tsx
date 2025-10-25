@@ -14,6 +14,7 @@ import {
 import { BaseError, formatUnits, isAddress, parseUnits } from "viem";
 import yaphouse from "@/abi/YapHouse.json";
 import yapToken from "@/abi/YapToken.json";
+import LiveAudioComponent from "@/components/LiveAudioComponent";
 import styles from "./page.module.css";
 
 type Profile = {
@@ -60,13 +61,28 @@ type TokenSnapshot = {
   userBalance: bigint;
 };
 
+type LiveSessionState = {
+  liveRoomId: string;
+  roomId: string;
+  title: string;
+  description: string;
+  creator: string;
+  mode: "host" | "listener";
+  userName: string;
+};
+
+const composeLiveRoomId = (creator: string, numericId: string) =>
+  `${creator.toLowerCase()}::${numericId}`;
+
+const shortenAddress = (value: string) =>
+  value ? `${value.slice(0, 6)}...${value.slice(-4)}` : "";
+
 type SectionId = "overview" | "register" | "token" | "rooms" | "explore";
 
 const YAPHOUSE_ABI = yaphouse.abi;
 const YAPTOKEN_ABI = yapToken.abi;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as `0x${string}`;
 const ZERO_BIGINT = BigInt(0);
-const SCROLL_OFFSET = 96;
 
 function getContractAddress(): `0x${string}` | null {
   const envValue =
@@ -135,6 +151,10 @@ export default function Dashboard() {
   const searchParams = useSearchParams();
   const registerQueryParam = searchParams?.get("register");
 
+  const [lastCompletedAction, setLastCompletedAction] = useState<string | null>(
+    null,
+  );
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [tokenSnapshot, setTokenSnapshot] = useState<TokenSnapshot | null>(
     null,
@@ -177,6 +197,34 @@ export default function Dashboard() {
   const [roomParticipants, setRoomParticipants] = useState<string[]>([]);
 
   const [joinDetails, setJoinDetails] = useState<JoinDetails | null>(null);
+
+  const [pendingRoomDraft, setPendingRoomDraft] = useState<
+    | {
+        title: string;
+        description: string;
+        category: string;
+        start: string;
+        end: string;
+      }
+    | null
+  >(null);
+  const [createdRoomInfo, setCreatedRoomInfo] = useState<
+    | {
+        roomId: string;
+        title: string;
+        description: string;
+      }
+    | null
+  >(null);
+  const [pendingStartRoom, setPendingStartRoom] = useState<string | null>(null);
+  const [pendingJoinRequest, setPendingJoinRequest] = useState<
+    | {
+        creator: string;
+        roomId: string;
+      }
+    | null
+  >(null);
+  const [liveSession, setLiveSession] = useState<LiveSessionState | null>(null);
 
   const [activeSection, setActiveSection] = useState<SectionId>("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -300,12 +348,14 @@ export default function Dashboard() {
     if (!isConfirmed || !pendingHash) {
       return;
     }
+    const completed = currentAction;
     setStatusTone("success");
     setStatusMessage(
-      `${currentAction ?? "Transaction"} confirmed on Base Sepolia.`,
+      `${completed ?? "Transaction"} confirmed on Base Sepolia.`,
     );
     setRecentHash(pendingHash);
     setPendingHash(null);
+    setLastCompletedAction(completed ?? null);
     setCurrentAction(null);
     postSuccessRefresh();
   }, [currentAction, isConfirmed, pendingHash, postSuccessRefresh]);
@@ -322,6 +372,7 @@ export default function Dashboard() {
     );
     setPendingHash(null);
     setCurrentAction(null);
+    setLastCompletedAction(null);
   }, [currentAction, isReceiptError, pendingHash, receiptError]);
 
   const submitTransaction = useCallback(
@@ -424,6 +475,14 @@ export default function Dashboard() {
           throw new Error("End time must be later than start time.");
         }
 
+        setPendingRoomDraft({
+          title: roomTitle.trim(),
+          description: roomDescription.trim(),
+          category: roomCategory.trim(),
+          start: roomStart,
+          end: roomEnd,
+        });
+
         await submitTransaction(
           "createRoom",
           [
@@ -448,6 +507,7 @@ export default function Dashboard() {
       event.preventDefault();
       try {
         const roomIdValue = safeParseUint(startRoomId, "Room ID");
+        setPendingStartRoom(startRoomId.trim());
         await submitTransaction("startRoom", [roomIdValue], "Start room");
       } catch (error) {
         setStatusTone("error");
@@ -465,6 +525,10 @@ export default function Dashboard() {
           throw new Error("Creator address is invalid.");
         }
         const roomIdValue = safeParseUint(joinRoomId, "Room ID");
+        setPendingJoinRequest({
+          creator: joinCreator.trim(),
+          roomId: joinRoomId.trim(),
+        });
         await submitTransaction(
           "joinRoom",
           [joinCreator.trim() as `0x${string}`, roomIdValue],
@@ -693,6 +757,236 @@ export default function Dashboard() {
     [address, contractAddress, publicClient, viewRoomCreator, viewRoomId],
   );
 
+  const handleStageLeave = useCallback(() => {
+    setLiveSession(null);
+  }, []);
+
+  useEffect(() => {
+    if (lastCompletedAction !== "Create room") {
+      return;
+    }
+    if (!pendingRoomDraft) {
+      setLastCompletedAction(null);
+      return;
+    }
+    if (!profile || !profile.exists || !address || !contractAddress) {
+      setPendingRoomDraft(null);
+      setLastCompletedAction(null);
+      return;
+    }
+    if (profile.nextRoomId === ZERO_BIGINT) {
+      setPendingRoomDraft(null);
+      setLastCompletedAction(null);
+      return;
+    }
+
+    const createdRoomIdBigInt = profile.nextRoomId - BigInt(1);
+    const createdRoomId = createdRoomIdBigInt.toString();
+
+    const loadDetails = async () => {
+      try {
+        if (!publicClient) {
+          return {
+            title: pendingRoomDraft.title,
+            description: pendingRoomDraft.description,
+          };
+        }
+
+        const room = (await publicClient.readContract({
+          address: contractAddress,
+          abi: YAPHOUSE_ABI,
+          functionName: "getRoom",
+          args: [address, createdRoomIdBigInt],
+        })) as RoomDetails;
+
+        return {
+          title: room.title || pendingRoomDraft.title,
+          description: room.description || pendingRoomDraft.description,
+        };
+      } catch (error) {
+        console.error("Failed to fetch created room", error);
+        return {
+          title: pendingRoomDraft.title,
+          description: pendingRoomDraft.description,
+        };
+      }
+    };
+
+    loadDetails().then((info) => {
+      setCreatedRoomInfo({
+        roomId: createdRoomId,
+        title: info.title,
+        description: info.description,
+      });
+      setStartRoomId(createdRoomId);
+      setEndRoomId(createdRoomId);
+      setActiveSection("rooms");
+    }).finally(() => {
+      setPendingRoomDraft(null);
+      setLastCompletedAction(null);
+      setRoomTitle("");
+      setRoomDescription("");
+      setRoomCategory("");
+      setRoomStart("");
+      setRoomEnd("");
+    });
+  }, [
+    address,
+    contractAddress,
+    lastCompletedAction,
+    pendingRoomDraft,
+    profile,
+    publicClient,
+  ]);
+
+  useEffect(() => {
+    if (lastCompletedAction !== "Start room") {
+      return;
+    }
+    if (!pendingStartRoom || !address) {
+      setPendingStartRoom(null);
+      setLastCompletedAction(null);
+      return;
+    }
+
+    const openStage = async () => {
+      let title = createdRoomInfo?.title;
+      let description = createdRoomInfo?.description;
+
+      if (publicClient && contractAddress) {
+        try {
+          const room = (await publicClient.readContract({
+            address: contractAddress,
+            abi: YAPHOUSE_ABI,
+            functionName: "getRoom",
+            args: [address, BigInt(pendingStartRoom)],
+          })) as RoomDetails;
+          title = room.title || title;
+          description = room.description || description;
+        } catch (error) {
+          console.error("Failed to fetch started room", error);
+        }
+      }
+
+      const liveRoomId = composeLiveRoomId(address, pendingStartRoom);
+      setLiveSession({
+        liveRoomId,
+        roomId: pendingStartRoom,
+        title: title ?? `Room ${pendingStartRoom}`,
+        description: description ?? "",
+        creator: address,
+        mode: "host",
+        userName:
+          profile?.name && profile.name.trim().length
+            ? profile.name
+            : shortenAddress(address),
+      });
+      setActiveSection("rooms");
+    };
+
+    openStage().finally(() => {
+      setPendingStartRoom(null);
+      setLastCompletedAction(null);
+    });
+  }, [
+    address,
+    contractAddress,
+    createdRoomInfo,
+    lastCompletedAction,
+    pendingStartRoom,
+    profile,
+    publicClient,
+  ]);
+
+  useEffect(() => {
+    if (lastCompletedAction !== "Join room") {
+      return;
+    }
+    if (!pendingJoinRequest) {
+      setLastCompletedAction(null);
+      return;
+    }
+
+    const { creator, roomId } = pendingJoinRequest;
+
+    const openStage = async () => {
+      let title: string | undefined;
+      let description: string | undefined;
+
+      if (publicClient && contractAddress) {
+        try {
+          const room = (await publicClient.readContract({
+            address: contractAddress,
+            abi: YAPHOUSE_ABI,
+            functionName: "getRoom",
+            args: [creator as `0x${string}`, BigInt(roomId)],
+          })) as RoomDetails;
+          title = room.title || undefined;
+          description = room.description || undefined;
+        } catch (error) {
+          console.error("Failed to fetch joined room", error);
+        }
+      }
+
+      setLiveSession({
+        liveRoomId: composeLiveRoomId(creator, roomId),
+        roomId,
+        title: title ?? `Room ${roomId}`,
+        description: description ?? "Join the conversation",
+        creator,
+        mode: "listener",
+        userName:
+          profile?.name && profile.name.trim().length
+            ? profile.name
+            : address
+            ? shortenAddress(address)
+            : "Listener",
+      });
+      setActiveSection("rooms");
+    };
+
+    openStage().finally(() => {
+      setPendingJoinRequest(null);
+      setLastCompletedAction(null);
+      setJoinCreator("");
+      setJoinRoomId("");
+    });
+  }, [
+    address,
+    contractAddress,
+    lastCompletedAction,
+    pendingJoinRequest,
+    profile,
+    publicClient,
+  ]);
+
+  useEffect(() => {
+    if (lastCompletedAction !== "End room & distribute") {
+      return;
+    }
+    setLiveSession(null);
+    setCreatedRoomInfo(null);
+    setLastCompletedAction(null);
+  }, [lastCompletedAction]);
+
+  useEffect(() => {
+    if (!isConnected || !onBaseSepolia) {
+      setLiveSession(null);
+      setCreatedRoomInfo(null);
+    }
+  }, [isConnected, onBaseSepolia]);
+
+  const liveAudioSession = liveSession
+    ? {
+        roomId: liveSession.liveRoomId,
+        roomCode: liveSession.roomId,
+        isHost: liveSession.mode === "host",
+        roomTitle: liveSession.title,
+        roomDescription: liveSession.description,
+        userName: liveSession.userName,
+      }
+    : null;
+
   const disableActions =
     !isConnected || !onBaseSepolia || isPromptingWallet || isConfirming;
 
@@ -726,26 +1020,12 @@ export default function Dashboard() {
     }
   }, [activeSection, navItems]);
 
-  const scrollToSection = useCallback((sectionId: SectionId) => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const element = document.getElementById(sectionId);
-    if (!element) {
-      return;
-    }
-    const rect = element.getBoundingClientRect();
-    const offset = window.scrollY + rect.top - SCROLL_OFFSET;
-    window.scrollTo({ top: offset < 0 ? 0 : offset, behavior: "smooth" });
-  }, []);
-
   const handleNavClick = useCallback(
     (sectionId: SectionId) => {
       setActiveSection(sectionId);
-      scrollToSection(sectionId);
       setIsSidebarOpen(false);
     },
-    [scrollToSection],
+    [],
   );
 
   useEffect(() => {
@@ -757,10 +1037,10 @@ export default function Dashboard() {
       return;
     }
     const timer = window.setTimeout(() => {
-      handleNavClick("register");
+      setActiveSection("register");
     }, 150);
     return () => window.clearTimeout(timer);
-  }, [handleNavClick, registerQueryParam, showRegisterForm]);
+  }, [registerQueryParam, showRegisterForm]);
 
   const closeSidebarOnEscape = useCallback((event: KeyboardEvent) => {
     if (event.key === "Escape") {
@@ -887,7 +1167,12 @@ export default function Dashboard() {
         ) : null}
 
         <main className={styles.content}>
-          <section id="overview" className={styles.section}>
+          <section
+            id="overview"
+            className={`${styles.section} ${
+              activeSection === "overview" ? "" : styles.sectionHidden
+            }`}
+          >
             <div className={styles.sectionHeader}>
               <h1 className={styles.sectionTitle}>Creator Overview</h1>
               <p className={styles.sectionDescription}>
@@ -1005,7 +1290,12 @@ export default function Dashboard() {
           </section>
 
           {showRegisterForm ? (
-            <section id="register" className={styles.section}>
+            <section
+              id="register"
+              className={`${styles.section} ${
+                activeSection === "register" ? "" : styles.sectionHidden
+              }`}
+            >
               <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>Register your profile</h2>
                 <p className={styles.sectionDescription}>
@@ -1051,7 +1341,12 @@ export default function Dashboard() {
             </section>
           ) : null}
 
-          <section id="token" className={styles.section}>
+          <section
+            id="token"
+            className={`${styles.section} ${
+              activeSection === "token" ? "" : styles.sectionHidden
+            }`}
+          >
             <div className={styles.sectionHeader}>
               <h2 className={styles.sectionTitle}>
                 {tokenSnapshot ? "Creator token" : "Launch creator token"}
@@ -1131,13 +1426,60 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section id="rooms" className={styles.section}>
+          <section
+            id="rooms"
+            className={`${styles.section} ${
+              activeSection === "rooms" ? "" : styles.sectionHidden
+            }`}
+          >
             <div className={styles.sectionHeader}>
               <h2 className={styles.sectionTitle}>Room controls</h2>
               <p className={styles.sectionDescription}>
                 Build, host, and reward conversations that keep listeners engaged.
               </p>
             </div>
+            {liveAudioSession ? (
+              <div className={styles.stageWrapper}>
+                <LiveAudioComponent
+                  session={liveAudioSession}
+                  onLeaveStage={handleStageLeave}
+                />
+                <p className={styles.stageNotice}>
+                  {liveSession?.mode === "host"
+                    ? `You are live as host for room ${liveSession?.roomId}. Control the stage with the buttons above and end the room when you are done.`
+                    : `You are listening to room ${liveSession?.roomId}. Leave the stage to return to the dashboard controls.`}
+                </p>
+              </div>
+            ) : null}
+
+            {createdRoomInfo ? (
+              <div className={styles.cardGridSingle}>
+                <div className={styles.card}>
+                  <h3 className={styles.cardTitle}>Latest room prepared</h3>
+                  <dl className={styles.datalist}>
+                    <div>
+                      <dt>Room ID</dt>
+                      <dd>{createdRoomInfo.roomId}</dd>
+                    </div>
+                    <div>
+                      <dt>Title</dt>
+                      <dd>{createdRoomInfo.title}</dd>
+                    </div>
+                    <div>
+                      <dt>Description</dt>
+                      <dd>{createdRoomInfo.description || "-"}</dd>
+                    </div>
+                  </dl>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => setStartRoomId(createdRoomInfo.roomId)}
+                  >
+                    Use in start form
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <div className={styles.cardGrid}>
               <div className={styles.card}>
                 <h3 className={styles.cardTitle}>Create room</h3>
@@ -1310,7 +1652,12 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section id="explore" className={styles.section}>
+          <section
+            id="explore"
+            className={`${styles.section} ${
+              activeSection === "explore" ? "" : styles.sectionHidden
+            }`}
+          >
             <div className={styles.sectionHeader}>
               <h2 className={styles.sectionTitle}>Explore rooms & creators</h2>
               <p className={styles.sectionDescription}>
