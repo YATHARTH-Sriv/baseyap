@@ -1,0 +1,489 @@
+.dashboard {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  background: radial-gradient(circle at top, rgba(79, 70, 229, 0.08), transparent 55%),
+    radial-gradient(circle at bottom, rgba(132, 204, 22, 0.08), transparent 45%),
+    #020617;
+  color: #f8fafc;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 2rem 1.75rem;
+  background: rgba(2, 6, 23, 0.9);
+  border-right: 1px solid rgba(148, 163, 184, 0.16);
+  backdrop-filter: blur(18px);
+  z-index: 40;
+}
+
+.sidebarHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brand {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.brandAccent {
+  color: #a3e635;
+}
+
+.sidebarClose {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.75rem;
+  cursor: pointer;
+  line-height: 1;
+  display: none;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.navButton {
+  border: none;
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.navButton:hover {
+  background: rgba(148, 163, 184, 0.14);
+  transform: translateX(4px);
+}
+
+.navButtonActive {
+  background: linear-gradient(135deg, rgba(163, 230, 53, 0.16), rgba(59, 130, 246, 0.1));
+  border: 1px solid rgba(163, 230, 53, 0.45);
+  box-shadow: 0 10px 25px rgba(163, 230, 53, 0.08);
+}
+
+.sidebarFooter {
+  margin-top: auto;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.sidebarHint {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  color: rgba(148, 163, 184, 0.65);
+}
+
+.sidebarValue {
+  word-break: break-word;
+}
+
+.sidebarLink {
+  color: #38bdf8;
+  text-decoration: none;
+  word-break: break-word;
+  transition: color 0.2s ease;
+}
+
+.sidebarLink:hover {
+  color: #a3e635;
+}
+
+.overlay {
+  display: none;
+}
+
+.mainColumn {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topBar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.25rem clamp(1.25rem, 3vw, 2.5rem);
+  background: rgba(2, 6, 23, 0.88);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  z-index: 30;
+}
+
+.menuButton {
+  display: none;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  color: inherit;
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+.statusStrip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.15);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.chipSuccess {
+  background: rgba(34, 197, 94, 0.2);
+  color: #bbf7d0;
+}
+
+.chipDanger {
+  background: rgba(248, 113, 113, 0.2);
+  color: #fecaca;
+}
+
+.banner {
+  margin: 1rem clamp(1.25rem, 3vw, 2.5rem) 0;
+  padding: 0.9rem 1.15rem;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #c7d2fe;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.bannerError {
+  background: rgba(248, 113, 113, 0.16);
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.bannerSuccess {
+  background: rgba(34, 197, 94, 0.16);
+  color: #bbf7d0;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.inlineCode {
+  font-family: "SFMono-Regular", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.85em;
+  padding: 0.15rem 0.35rem;
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.16);
+  color: #f8fafc;
+}
+
+.content {
+  flex: 1;
+  padding: 2.5rem clamp(1.25rem, 3vw, 3rem) 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  scroll-margin-top: 110px;
+}
+
+.sectionHeader {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.sectionDescription {
+  margin: 0;
+  color: rgba(148, 163, 184, 0.9);
+  max-width: 640px;
+}
+
+.cardGrid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.cardGridSingle {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 680px);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.75rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.65));
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.32);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: rgba(148, 163, 184, 0.2);
+  color: rgba(148, 163, 184, 0.95);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.statusBadgeActive {
+  background: rgba(34, 197, 94, 0.2);
+  color: #bbf7d0;
+}
+
+.placeholder {
+  margin: 0;
+  color: rgba(148, 163, 184, 0.85);
+  line-height: 1.5;
+}
+
+.secondaryButton {
+  align-self: flex-start;
+  border-radius: 999px;
+  border: 1px solid rgba(163, 230, 53, 0.4);
+  background: transparent;
+  color: #d9f99d;
+  padding: 0.65rem 1.4rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.secondaryButton:hover {
+  background: rgba(163, 230, 53, 0.15);
+  transform: translateY(-1px);
+}
+
+.form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+  color: inherit;
+  padding: 0.75rem 0.95rem;
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: rgba(163, 230, 53, 0.65);
+  box-shadow: 0 0 0 3px rgba(163, 230, 53, 0.18);
+}
+
+.primaryButton {
+  border: none;
+  border-radius: 999px;
+  padding: 0.8rem 1.75rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #22c55e, #84cc16);
+  color: #052e16;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.primaryButton:hover:enabled {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.primaryButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.formHint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(248, 113, 113, 0.85);
+}
+
+.datalist {
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+  font-size: 0.95rem;
+}
+
+.datalist div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.datalist dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(148, 163, 184, 0.72);
+}
+
+.datalist dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.lookupSection {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.lookupSection h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.participantList ul {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.participantList li {
+  font-size: 0.95rem;
+  word-break: break-word;
+}
+
+@media (max-width: 1080px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 260px;
+    transform: translateX(-110%);
+    transition: transform 0.3s ease;
+    box-shadow: 16px 0 35px rgba(15, 23, 42, 0.45);
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .sidebarClose {
+    display: inline-flex;
+  }
+
+  .overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: 35;
+  }
+
+  .menuButton {
+    display: inline-flex;
+  }
+
+  .topBar {
+    padding-right: clamp(1rem, 3vw, 2rem);
+  }
+}
+
+@media (max-width: 720px) {
+  .content {
+    padding: 2rem 1.25rem 2.5rem;
+    gap: 2.5rem;
+  }
+
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cardGridSingle {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 1.5rem;
+  }
+
+  .statusStrip {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
